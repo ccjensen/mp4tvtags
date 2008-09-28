@@ -1,4 +1,29 @@
 #!/usr/bin/env python
+#encoding:utf-8
+#author:ccjensen/Chris
+#project:mp4tvtagger
+#repository:http://github.com/ccjensen/mp4tvtags/
+#license:Creative Commons GNU GPL v2
+# (http://creativecommons.org/licenses/GPL/2.0/)
+ 
+"""
+mp4tvtags.py
+Automatic TV episode tagger.
+Uses data from www.thetvdb.com via tvdb_api, 
+thanks goes to dbr/Ben http://github.com/dbr
+"""
+ 
+__author__ = "ccjensen/Chris"
+__version__ = "0.1"
+ 
+import os, sys, re
+from optparse import OptionParser
+ 
+from tvdb_api import (tvdb_error, tvdb_shownotfound, tvdb_seasonnotfound,
+    tvdb_episodenotfound, tvdb_episodenotfound, tvdb_attributenotfound, tvdb_userabort)
+from tvdb_api import Tvdb
+ 
+config = {}
 
 import glob
 import re
@@ -41,7 +66,8 @@ def _artwork(db, seriesName, seasonNumber):
 	os.popen("curl -o %s %s" % ("\"" + artworkFileName + "\"", artworkUrl))
 	return artworkFileName
 
-def main():
+def run():
+	"""docstring for run"""
 	from tvdb_api import Tvdb
 	db = Tvdb()
 	
@@ -145,6 +171,10 @@ def main():
 		
 		#run AtomicParsley using the arguments we have created
 		result = os.popen(cmd)
+
+def main():
+	"""docstring for main"""
+	run()
 
 if __name__ == '__main__':
 	main()
