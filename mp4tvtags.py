@@ -9,7 +9,7 @@ def _openUrl(urls):
 		if len(url) > 0:
 			os.popen("open \"%s\"" % url)
 	return
-	
+
 def _artwork(db, seriesName, seasonNumber):
 	sid = db._nameToSid(seriesName)
 	artworks = db._getSeasonSpecificArtwork(sid, seasonNumber)
@@ -113,7 +113,7 @@ def main():
 		addContentRating = " --contentRating \"%s\"" % contentRating
 		addYear = " --year \"%s\"" % firstAired
 		
-		#create rDNSatom     
+		#create rDNSatom
 		if len(actors) > 0:
 			castDNS = "<key>cast</key><array>"
 			for actor in actors:
@@ -135,10 +135,10 @@ def main():
 					screenwritersDNS += "<dict><key>name</key><string>%s</string></dict>" % writer
 			screenwritersDNS += "</array>"
 		
-		#create the rDNSatom string  
+		#create the rDNSatom string
 		addrDNSatom = ' --rDNSatom \'<?xml version=\"1.0\" encoding=\"UTF-8\"?><plist version=\"1.0\"><dict>%s%s%s</dict></plist>\' name=iTunMOVI domain=com.apple.iTunes' % (castDNS, directorsDNS, screenwritersDNS)
 		
-		#Create the command line string  
+		#Create the command line string
 		cmd = "/Applications/MetaX.app/Contents/Resources/AtomicParsley32 \"" + dirPath + "/" + fileName + "\"" \
 		+ addStik + addArtist + addTitle + addAlbum + addGenre + addAlbumArtist + addDescription + addTVNetwork \
 		+ addTVShowName + addTVEpisode + addTVSeasonNum + addTVEpisodeNum + addContentRating + addrDNSatom
