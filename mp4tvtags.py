@@ -170,7 +170,7 @@ def run():
 		+ addTVShowName + addTVEpisode + addTVSeasonNum + addTVEpisodeNum + addContentRating + addrDNSatom
 		
 		#run AtomicParsley using the arguments we have created
-		result = os.popen(cmd)
+		#result = os.popen(cmd)
 
 def main():
 	"""docstring for main"""
