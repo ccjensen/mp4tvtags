@@ -1,3 +1,6 @@
++++++++mp4TvTags+++++++
+Only tested using Mac OS X Leopard
+
 This requires Python and a modified version of AtomicParsley (to allow it to write to the "long description" tag).
 Below are instructions on how to edit the source version of AtomicParsley (thanks to creator of MetaX Rodney - http://kerstetter.net for the code snippets). Rather then build it yourself, it might be easier to download MetaX and copy the AtomicParsley32 from /../MetaX.app/Contents/Resources
 
@@ -7,6 +10,7 @@ Usage:
 Browse to the folder that contain the tv episodes. Must be in the structure:
 /Show Name/Season #/S#xE# <anything> .mp4
 example: /The X-Files/Season 1/1x1 Pilot.mp4
+
 
 
 HOW TO MAKE MODIFIED BUILD OF ATOMICPARSLEY
