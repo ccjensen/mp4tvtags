@@ -12,8 +12,9 @@ Automatic TV episode tagger.
 Uses data from www.thetvdb.com via tvdb_api, 
 
 thanks goes to:
-dbr/Ben - http://github.com/dbr
-Rodney - http://kerstetter.net
+dbr/Ben - http://github.com/dbr - for python and tvdb_api
+Rodney - http://kerstetter.net - for AtomicParsley help
+Coordt - http://www.djangosnippets.org/users/coordt/ - for unicode to ascii
 """
  
 __author__ = "ccjensen/Chris"
@@ -88,6 +89,11 @@ def getEpisodeSpecificInfo(tvdb, series, seasonNumber, episodeNumber, attribute)
 		value = tvdb[series][seasonNumber][episodeNumber][attribute]
 		#clean up string
 		value =  value.replace('&quot;', "\\\"")
+		
+		#convert any unicode to ascii
+		from unaccented_map import unicode_to_ascii
+		value = unicode_to_ascii(value)
+		
 		return value
 	except tvdb_episodenotfound:
 		# The episode was not found wasn't found
