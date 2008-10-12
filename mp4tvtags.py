@@ -19,28 +19,35 @@ Rodney - http://kerstetter.net
 __author__ = "ccjensen/Chris"
 __version__ = "0.1"
  
-import os, sys, re, glob
+import os
+import sys
+import re
+import glob
+
 from optparse import OptionParser
  
 from tvdb_api import (tvdb_error, tvdb_shownotfound, tvdb_seasonnotfound,
     tvdb_episodenotfound, tvdb_episodenotfound, tvdb_attributenotfound, tvdb_userabort)
 from tvdb_api import Tvdb
- 
-config = {}
 
-def _openUrl(urls):
+def openurl(urls):
 	for url in urls:
 		if len(url) > 0:
 			os.popen("open \"%s\"" % url)
+		#end if len
+	#end for url
 	return
+#end openurl
 
-def _artwork(db, dirPath, seriesName, seasonNumber):
+def artwork(db, dirPath, seriesName, seasonNumber):
 	potentialArtworkFileName = seriesName + " Season " + str(seasonNumber)
 	for fileName in glob.glob("*.jpg"):
 		(fileBaseName, fileExtension) = os.path.splitext(fileName)
 		if fileBaseName == potentialArtworkFileName:
 			print "Using Previously Downloaded Artwork: " + fileName
 			return fileName
+		#end if fileBaseName
+	#end for fileName
 	sid = db._nameToSid(seriesName)
 	artworks = db._getSeasonSpecificArtwork(sid, seasonNumber)
 	
@@ -48,6 +55,7 @@ def _artwork(db, dirPath, seriesName, seasonNumber):
 	for artwork in artworks:
 		print "%s. %s" % (artworkCounter, artwork)
 		artworkCounter += 1
+	#end for artwork
 	
 	#allow user to preview images
 	print "Example of listing: 1 2 4"
@@ -57,7 +65,8 @@ def _artwork(db, dirPath, seriesName, seasonNumber):
 	artworkPreviewUrls = []
 	for artworkPreviewRequest in artworkPreviewRequests:
 		artworkPreviewUrls.append(artworks[int(artworkPreviewRequest)])
-	_openUrl(artworkPreviewUrls)
+	#end for artworkPreviewRequest
+	openurl(artworkPreviewUrls)
 	
 	#ask user what artwork he wants to use
 	artworkChoice = int(raw_input("Artwork to use: "))
@@ -71,6 +80,28 @@ def _artwork(db, dirPath, seriesName, seasonNumber):
 	os.popen("curl -o %s %s" % ("\"" + artworkFileName + "\"", artworkUrl))
 	print "Downloaded Artwork: " + artworkFileName
 	return artworkFileName
+#end artwork
+
+def getEpisodeSpecificInfo(tvdb, series, seasonNumber, episodeNumber, attribute):
+	"""docstring for getEpisodeSpecificInfo"""
+	try:
+		value = tvdb[series][seasonNumber][episodeNumber][attribute]
+		#clean up string
+		value =  value.replace('&quot;', "\\\"")
+		return value
+	except tvdb_episodenotfound:
+		# The episode was not found wasn't found
+		sys.stderr.write("!!!! Critical Error: Episode name not found for %s (in %s%s)\n" % (series, dirPath, fileName))
+		sys.exit(2)
+	except tvdb_error, errormsg:
+		# Error communicating with thetvdb.com
+		sys.stderr.write("!!!! Critical Error: Error contacting www.thetvdb.com:\n%s\n" % (errormsg))
+		sys.exit(2)
+	except tvdb_attributenotfound, errormsg:
+		# The attribute wasn't found, not critical
+		sys.stderr.write("!! Non-Critical Error: %s for %sx%s\n" % (errormsg, seasonNumber, episodeNumber))
+		return ""
+#end getEpisodeSpecificInfo
 
 def main():
 	"""docstring for run"""
@@ -119,7 +150,7 @@ def main():
 	
 	seasonNumber = int(seasonNumber)
 	
-	artworkFileName = _artwork(db, dirPath, seriesName, seasonNumber)
+	artworkFileName = artwork(db, dirPath, seriesName, seasonNumber)
 	
 	pattern = re.compile('[\D]+')
 	# loop over all file names in the current directory
@@ -136,9 +167,12 @@ def main():
 			if line.count("tagged by mp4tvtags"):
 				alreadyTagged = True
 				break
+			#end if line.count
+		#end for line
 		if alreadyTagged:
 			print fileName + " already tagged"
-			continue			
+			continue
+		#end if alreadyTagged	
 		
 		#check if the image we have needed resizing/dpi changed, so now we should use this new temp file that was created
 		(imageFile, imageExtension) = os.path.splitext(artworkFileName)
@@ -147,6 +181,9 @@ def main():
 				if imageFileName.count("-resized-"):
 					artworkFileName = imageFileName
 					break
+				#end if imageFileName.count
+			#end for imageFileName
+		#end if artworkFileName.count
 		
 		#Parse the file name for information: 1x01 - Pilot.mp4
 		(fileBaseName, fileExtension) = os.path.splitext(fileName)
@@ -178,12 +215,14 @@ def main():
 		addGenre = " --genre \"%s\"" % genres[1] #cause first one is an empty string, and genre can only have one entry
 		addAlbumArtist = " --albumArtist \"%s\"" % seriesName
 		addDescription = " --description \"%s\"" % overview
-		addLongDescription = " --longDescription \"%s\"" % seriesOverview
+		addLongDescription = " --longDescription \"%s\"" % overview
 		addTVNetwork = " --TVNetwork \"%s\"" % network
 		addTVShowName = " --TVShowName \"%s\"" % seriesName
 		addTVEpisode = " --TVEpisode \"%s\"" % productionCode
 		addTVSeasonNum = " --TVSeasonNum \"%i\"" % seasonNumber
 		addTVEpisodeNum = " --TVEpisodeNum \"%i\"" % episodeNumber
+		addDisk = " --disk \"%i\"" % seasonNumber
+		addTracknum = " --tracknum \"%i\"" % episodeNumber
 		addContentRating = " --contentRating \"%s\"" % contentRating
 		addYear = " --year \"%s\"" % firstAired
 		addComment = " --comment \"tagged by mp4tvtags\""
@@ -194,30 +233,40 @@ def main():
 			for actor in actors:
 				if len(actor) > 0:
 					castDNS += "<dict><key>name</key><string>%s</string></dict>" % actor
+				#end if len
+			#end for actor
 			castDNS += "</array>"
+		#end if len
+			
 		
 		if len(directors) > 0:
 			directorsDNS = "<key>directors</key><array>"
 			for director in directors:
 				if len(director) > 0:
 					directorsDNS += "<dict><key>name</key><string>%s</string></dict>" % director
+				#end if len
+			#end for director
 			directorsDNS += "</array>"
+		#end if len
 		
 		if len(writers) > 0:
 			screenwritersDNS = "<key>screenwriters</key><array>"
 			for writer in writers:
 				if len(writer) > 0:
 					screenwritersDNS += "<dict><key>name</key><string>%s</string></dict>" % writer
+				#end if len
+			#end for writer
 			screenwritersDNS += "</array>"
+		#end if len
 		
 		#create the rDNSatom string
-		addrDNSatom = ' --rDNSatom \'<?xml version=\"1.0\" encoding=\"UTF-8\"?><plist version=\"1.0\"><dict>%s%s%s</dict></plist>\' name=iTunMOVI domain=com.apple.iTunes' % (castDNS, directorsDNS, screenwritersDNS)
+		addrDNSatom = " --rDNSatom \"<?xml version=\'1.0\' encoding=\'UTF-8\'?><plist version=\'1.0\'><dict>%s%s%s</dict></plist>\" name=iTunMOVI domain=com.apple.iTunes" % (castDNS, directorsDNS, screenwritersDNS)
 		
 		#Create the command line string
 		tagCmd = "\"" + atomicParsley + "\" \"" + dirPath + "/" + fileName + "\"" \
 		+ addArtwork + addStik + addArtist + addTitle + addAlbum + addGenre + addAlbumArtist + addDescription \
-		+ addTVNetwork + addTVShowName + addTVEpisode + addTVSeasonNum + addTVEpisodeNum + addContentRating  \
-		+ addYear + addComment + addrDNSatom + addLongDescription + additionalParameters
+		+ addTVNetwork + addTVShowName + addTVEpisode + addTVSeasonNum + addTVEpisodeNum + addDisk + addTracknum \
+		+ addContentRating  + addYear + addComment + addrDNSatom + addLongDescription + additionalParameters
 		
 		#run AtomicParsley using the arguments we have created
 		os.popen(tagCmd)
@@ -235,27 +284,11 @@ def main():
 			if imageFileName.count("-resized-"):
 				os.remove(imageFileName)
 				print "Deleted temporary artwork file created by AtomicParsley"
-		
-def getEpisodeSpecificInfo(tvdb, series, seasonNumber, episodeNumber, attribute):
-	"""docstring for getEpisodeSpecificInfo"""
-	try:
-		value = tvdb[series][seasonNumber][episodeNumber][attribute]
-		#clean up string
-		value =  value.replace('"', "&quot;")
-		value = value.replace("'", "&#39;")
-		return value
-	except tvdb_episodenotfound:
-		# The episode was not found wasn't found
-		sys.stderr.write("!!!! Critical Error: Episode name not found for %s (in %s%s)\n" % (series, dirPath, fileName))
-		sys.exit(2)
-	except tvdb_error, errormsg:
-		# Error communicating with thetvdb.com
-		sys.stderr.write("!!!! Critical Error: Error contacting www.thetvdb.com:\n%s\n" % (errormsg))
-		sys.exit(2)
-	except tvdb_attributenotfound, errormsg:
-		# The attribute wasn't found, not critical
-		sys.stderr.write("!! Non-Critical Error: %s for %sx%s\n" % (errormsg, seasonNumber, episodeNumber))
-		return ""
+			#end if imageFileName.count
+		#end for imageFileName
+	#end if artworkFileName.count
+#end main
 
 if __name__ == '__main__':
 		sys.exit(main())
+#end if __name__
