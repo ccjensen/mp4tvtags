@@ -156,7 +156,7 @@ class Show:
                 return  dict.__getitem__(self.data, season_numer)
             else:
                 # Nope, it doesn't exist
-                raise tvdb_seasonnotfound
+                raise tvdb_seasonnotfound("Attribute not found: %s" % (season_numer))
         else:
             return dict.__getitem__(self.seasons, season_numer)
     def search(self, contents = None, key = None):
@@ -238,7 +238,7 @@ class Episode:
         self.data = {}
     def __getitem__(self, key):
         if not dict.has_key(self.data, key):
-            raise tvdb_attributenotfound
+            raise tvdb_attributenotfound("Attribute not found: %s" % (key))
         else:
             return dict.__getitem__(self.data, key)
     def __setitem__(self, key, value):
