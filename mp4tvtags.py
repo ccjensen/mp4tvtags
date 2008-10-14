@@ -53,13 +53,14 @@ def artwork(db, dirPath, seriesName, seasonNumber):
 	artworks = db._getSeasonSpecificArtwork(sid, seasonNumber)
 	
 	artworkCounter = 0
+	print "\nList of available artwork"
 	for artwork in artworks:
 		print "%s. %s" % (artworkCounter, artwork)
 		artworkCounter += 1
 	#end for artwork
 	
 	#allow user to preview images
-	print "Example of listing: 1 2 4"
+	print "Example of listing: 0 2 4"
 	artworkPreviewRequestNumbers = raw_input("List Images to Preview: ")
 	artworkPreviewRequests = artworkPreviewRequestNumbers.split()
 	
@@ -83,6 +84,27 @@ def artwork(db, dirPath, seriesName, seasonNumber):
 	return artworkFileName
 #end artwork
 
+def getShowSpecificInfo(tvdb, series, attribute):
+	"""docstring for getEpisodeSpecificInfo"""
+	try:
+		value = tvdb[series][attribute]		
+		return value
+	except tvdb_error, errormsg:
+		# Error communicating with thetvdb.com
+		sys.stderr.write("!!!! Critical Show Error: Error contacting www.thetvdb.com:\n%s\n" % (errormsg))
+		sys.exit(2)
+	except tvdb_shownotfound:
+		# No such series found.
+		sys.stderr.write("!!!! Critical Show Error: Show %s not found\n" % (series))
+		sys.exit(2)
+	except tvdb_seasonnotfound, errormsg:
+		# Either the season wasn't found, or a bit of data we requested about the show is missing
+		sys.stderr.write("!! Non-Critical Show Error: %s for %s\n" % (errormsg, series))
+	except tvdb_attributenotfound, errormsg:
+		# The attribute wasn't found, not critical
+		sys.stderr.write("!! Non-Critical Show Error: %s for %s\n" % (errormsg, series))
+#end getEpisodeSpecificInfo
+
 def getEpisodeSpecificInfo(tvdb, series, seasonNumber, episodeNumber, attribute):
 	"""docstring for getEpisodeSpecificInfo"""
 	try:
@@ -97,19 +119,32 @@ def getEpisodeSpecificInfo(tvdb, series, seasonNumber, episodeNumber, attribute)
 		return value
 	except tvdb_episodenotfound:
 		# The episode was not found wasn't found
-		sys.stderr.write("!!!! Critical Error: Episode name not found for %s (in %s%s)\n" % (series, dirPath, fileName))
+		sys.stderr.write("!!!! Critical Episode Error: Episode name not found for %s %sx%s\n" % (series, seasonNumber, episodeNumber))
 		sys.exit(2)
 	except tvdb_error, errormsg:
 		# Error communicating with thetvdb.com
-		sys.stderr.write("!!!! Critical Error: Error contacting www.thetvdb.com:\n%s\n" % (errormsg))
+		sys.stderr.write("!!!! Critical Episode Error: Error contacting www.thetvdb.com:\n%s\n" % (errormsg))
 		sys.exit(2)
 	except tvdb_attributenotfound, errormsg:
 		# The attribute wasn't found, not critical
-		sys.stderr.write("!! Non-Critical Error: %s for %sx%s\n" % (errormsg, seasonNumber, episodeNumber))
+		sys.stderr.write("!! Non-Critical Episode Error: %s for %sx%s\n" % (errormsg, seasonNumber, episodeNumber))
 		return ""
 #end getEpisodeSpecificInfo
 
+def createrdnsatom(key, array):
+	"""docstring for createrdnsatom"""
+	dns = "<key>" + key + "</key><array>"
+	for item in array:
+		if len(array) > 0:
+			dns += "<dict><key>name</key><string>%s</string></dict>" % item
+		#end if len
+	#end for actor
+	dns += "</array>"
+	return dns
+#end createrdnsatom
+
 def main():
+	print "Connecting to the TVDB... "
 	"""docstring for run"""
 	from tvdb_api import Tvdb
 	db = Tvdb()
@@ -122,40 +157,30 @@ def main():
 	(head, series) = os.path.split(head)
 	(season, seasonNumber) = seasonFull.split(" ",1)
 	
-	try:
-		#get show specific meta data
-		seriesName  = db[series]['seriesname']
-		
-		actorsUnsplit = db[series]['actors']
-		actors = actorsUnsplit.split('|')
-
-		contentRating = db[series]['contentrating']
-		firstaired  = db[series]['firstaired']
-
-		genresUnsplit  = db[series]['genre']
-		genres = genresUnsplit.split('|')
-
-		network  = db[series]['network']
-		seriesOverview  = db[series]['overview']
-
-	except tvdb_shownotfound:
-		# No such series found.
-		sys.stderr.write("!!!! Critical Error: Show %s not found (in %s)\n" % (series, dirPath))
+	#get show specific meta data
+	print "Retrieving Show Information... "
+	seriesName = getShowSpecificInfo(db, series, 'seriesname')
+	
+	#check if we actually found seriesName
+	if len(seriesName) == 0:
 		return 2
-	except tvdb_seasonnotfound:
-		# The season wasn't found, but the show was.
-		sys.stderr.write("!!!! Critical Error: Season number %s not found for %s (in %s)\n" % (seasonNumber, series, dirPath))
-		return 2
-	except tvdb_error, errormsg:
-		# Error communicating with thetvdb.com
-		sys.stderr.write("!!!! Critical Error: Error contacting www.thetvdb.com:\n%s\n" % (errormsg))
-		return 2
-	except tvdb_attributenotfound, errormsg:
-		# The attribute wasn't found, not critical
-		sys.stderr.write("!! Non-Critical Error: %s for %s (in %s)\n" % (errormsg, series, dirPath))
+	#end if len
+	
+	actorsUnsplit = getShowSpecificInfo(db, series, 'actors')
+	actors = actorsUnsplit.split('|')
+	
+	contentRating = getShowSpecificInfo(db, series, 'contentrating')
+	firstaired  = getShowSpecificInfo(db, series, 'firstaired')
+	
+	genresUnsplit  = getShowSpecificInfo(db, series, 'genre')
+	genres = genresUnsplit.split('|')
+
+	network  = getShowSpecificInfo(db, series, 'network')
+	#seriesOverview  = getShowSpecificInfo(db, series, 'overview') #currently not used for anything
 	
 	seasonNumber = int(seasonNumber)
 	
+	#request user to select artwork
 	artworkFileName = artwork(db, dirPath, seriesName, seasonNumber)
 	
 	pattern = re.compile('[\D]+')
@@ -235,34 +260,13 @@ def main():
 		
 		#create rDNSatom
 		if len(actors) > 0:
-			castDNS = "<key>cast</key><array>"
-			for actor in actors:
-				if len(actor) > 0:
-					castDNS += "<dict><key>name</key><string>%s</string></dict>" % actor
-				#end if len
-			#end for actor
-			castDNS += "</array>"
-		#end if len
-			
-		
+			castDNS = createrdnsatom("cast", actors)
+		#end if len	
 		if len(directors) > 0:
-			directorsDNS = "<key>directors</key><array>"
-			for director in directors:
-				if len(director) > 0:
-					directorsDNS += "<dict><key>name</key><string>%s</string></dict>" % director
-				#end if len
-			#end for director
-			directorsDNS += "</array>"
+			directorsDNS = createrdnsatom("directors", directors)
 		#end if len
-		
 		if len(writers) > 0:
-			screenwritersDNS = "<key>screenwriters</key><array>"
-			for writer in writers:
-				if len(writer) > 0:
-					screenwritersDNS += "<dict><key>name</key><string>%s</string></dict>" % writer
-				#end if len
-			#end for writer
-			screenwritersDNS += "</array>"
+			screenwritersDNS = createrdnsatom("screenwriters", writers)
 		#end if len
 		
 		#create the rDNSatom string
@@ -278,6 +282,7 @@ def main():
 		os.popen(tagCmd)
 		print "Tagged: " + fileName
 		#print tagCmd
+	#end for fileName
 	
 	#remove any temporary artwork files created by AtomicParsley
 	(imageFile, imageExtension) = os.path.splitext(artworkFileName)
