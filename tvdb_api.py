@@ -6,9 +6,7 @@
 #license:Creative Commons GNU GPL v2
 # (http://creativecommons.org/licenses/GPL/2.0/)
 
-"""
-tvdb_api.py
-Simple-to-use Python interface to The TVDB's API (www.thetvdb.com)
+"""Simple-to-use Python interface to The TVDB's API (www.thetvdb.com)
 
 Example usage:
 
@@ -21,13 +19,12 @@ __author__ = "dbr/Ben"
 __version__ = "0.3"
 
 class Cache:
-    """
-    Simple caching URL opener. Acts like:
+    """Simple caching URL opener. Acts like:
     import urllib
     return urllib.urlopen("http://example.com").read()
-    
+
     Caches complete files to temp directory,
-    
+
     >>> ca = Cache()
     >>> ca.loadUrl("http://example.com") #doctest: +ELLIPSIS
     '<HTML>...'
@@ -40,30 +37,28 @@ class Cache:
         import sha1 as hasher
     except ImportError:
         import md5 as hasher
-    
+
     def __init__(self, max_age=21600, prefix="tvdb_api"):
         self.prefix = prefix
         self.max_age = max_age
-        
+
         tmp = self.tempfile.gettempdir()
         tmppath = self.os.path.join(tmp, prefix)
         if not self.os.path.isdir(tmppath):
             self.os.mkdir(tmppath)
         self.tmp = tmppath
     #end __init__
-    
+
     def getCachePath(self, url):
-        """
-        Calculates the cache path (/temp_directory/hash_of_URL)
+        """Calculates the cache path (/temp_directory/hash_of_URL)
         """
         cache_name = self.hasher.new(url).hexdigest()
         cache_path = self.os.path.join(self.tmp, cache_name)
         return cache_path
     #end getUrl
-    
+
     def checkCache(self, url):
-        """
-        Takes a URL, checks if a cache exists for it.
+        """Takes a URL, checks if a cache exists for it.
         If so, returns path, if not, returns False
         """
         path = self.getCachePath(url)
@@ -78,10 +73,9 @@ class Cache:
         else:
             return False
     #end checkCache
-    
+
     def loadUrl(self, url):
-        """
-        Takes a URL, returns the contents of the URL, and does the caching.
+        """Takes a URL, returns the contents of the URL, and does the caching.
         """
         cacheExists = self.checkCache(url)
         if cacheExists:
@@ -100,65 +94,90 @@ class Cache:
     #end loadUrl
 #end Cache
 
+def is_int(x):
+    """Takes a string, checks if it is numeric.
+    >>> is_int("2")
+    True
+    >>> is_int("A test")
+    False
+    """
+    try:
+        int(x)
+    except ValueError:
+        return False
+    else:
+        return True
+
 
 # Custom exceptions
 class tvdb_error(Exception):
-    """
-    An error with www.thetvdb.com (Cannot connect, for example)
+    """An error with www.thetvdb.com (Cannot connect, for example)
     """
     pass
 class tvdb_userabort(Exception):
-    """
-    User aborted the interactive selection (via
+    """User aborted the interactive selection (via
     the q command, ^c etc)
     """
     pass
 class tvdb_shownotfound(Exception):
-    """
-    Show cannot be found on www.thetvdb.com (non-existant show)
+    """Show cannot be found on www.thetvdb.com (non-existant show)
     """
     pass
 class tvdb_seasonnotfound(Exception):
-    """
-    Season cannot be found on www.thetvdb.com
+    """Season cannot be found on www.thetvdb.com
     """
     pass
 class tvdb_episodenotfound(Exception):
-    """
-    Episode cannot be found on www.thetvdb.com
+    """Episode cannot be found on www.thetvdb.com
     """
     pass
 class tvdb_attributenotfound(Exception):
-    """
-    Raised if an episode does not have the requested
+    """Raised if an episode does not have the requested
     attribute (such as a episode name)
     """
     pass
 
-class ShowContainer(dict): pass
+class ShowContainer(dict):
+    """Simple dict that holds a series of Show instancies
+    """
+    pass
 
 class Show:
+    """Holds a dict of seasons, and show data.
+    """
     def __init__(self):
         self.seasons = {}
         self.data = {}
     def __iter__(self):
         for cd in self.seasons.values():
             yield cd
+    def __repr__(self):
+        return "<Show %s (containing %s seasons)>" % (
+            self.data.get(u'seriesname', 'instance'),
+            len(self.seasons)
+        )
     def has_key(self, key):
         return dict.has_key(self.seasons, key)
     def __setitem__(self, season_number, value):
         dict.__setitem__(self.seasons, season_number, value)
-    def __getitem__(self, season_numer):
-        if not dict.has_key(self.seasons, season_numer):
+    def __getitem__(self, key):
+        if not dict.has_key(self.seasons, key):
             # Season number doesn't exist
-            if dict.has_key(self.data, season_numer):
+            if dict.has_key(self.data, key):
                 # check if it's a bit of data
-                return  dict.__getitem__(self.data, season_numer)
+                return  dict.__getitem__(self.data, key)
             else:
                 # Nope, it doesn't exist
-                raise tvdb_seasonnotfound("Attribute not found: %s" % (season_numer))
+                # If it's numeric, it's a season number, raise season not found
+                if is_int(key):
+                    raise tvdb_seasonnotfound
+                else:
+                    # If it's not numeric, it must be an attribute name, which
+                    # doesn't exist, so attribute error.
+                    raise tvdb_attributenotfound
+                
         else:
-            return dict.__getitem__(self.seasons, season_numer)
+            return dict.__getitem__(self.seasons, key)
     def search(self, contents = None, key = None):
         """
         Search all episodes. Can search all values, or a specific one.
@@ -166,27 +185,27 @@ class Show:
         found episode, and so on.
         Each array index is an Episode() instance, so doing
         search_results[0]['episodename'] will retrive the episode name.
-        
+
         Examples
         These examples assume  t is an instance of Tvdb():
         >>> t = Tvdb()
         >>>
-        
+
         Search for all episodes of Scrubs episodes
         with a bit of data containg "my first day":
-        
+
         >>> t['Scrubs'].search("my first day") #doctest: +ELLIPSIS
         [<__main__.Episode instance at 0x...>]
         >>>
-        
+
         Search for "My Name Is Earl" named "Faked His Own Death":
-        
+
         >>> t['My Name Is Earl'].search('Faked His Own Death', key = 'name') #doctest: +ELLIPSIS
         [<__main__.Episode instance at 0x...>]
         >>>
-        
+
         Using search results
-        
+
         >>> results = t['Scrubs'].search("my first")
         >>> print results[0]['episodename']
         My First Day
@@ -198,7 +217,7 @@ class Show:
         """
         if key == contents == None:
             raise TypeError("must supply atleast one type of search")
-        
+
         results = []
         for cur_season in self.seasons.values():
             for cur_ep in cur_season.episodes.values():
@@ -219,11 +238,15 @@ class Show:
         return results
 
 class Season:
+    def __init__(self):
+        self.episodes = {}
     def __iter__(self):
         for cd in self.episodes.values():
             yield cd
-    def __init__(self):
-        self.episodes = {}
+    def __repr__(self):
+        return "<Season instance (containing %s episodes)>" % (
+            len(self.episodes)
+        )
     def has_key(self, key):
         return dict.has_key(self.episodes, key)
     def __setitem__(self, episode_number, value):
@@ -233,92 +256,82 @@ class Season:
             raise tvdb_episodenotfound
         else:
             return dict.__getitem__(self.episodes, episode_number)
+
 class Episode:
     def __init__(self):
         self.data = {}
+    def __repr__(self):
+        return "<Episode %02dx%02d - %s>" % (
+            int(self.data.get(u'seasonnumber')),
+            int(self.data.get(u'episodenumber')),
+            self.data.get(u'episodename')
+        )
     def __getitem__(self, key):
         if not dict.has_key(self.data, key):
-            raise tvdb_attributenotfound("Attribute not found: %s" % (key))
+            raise tvdb_attributenotfound
         else:
             return dict.__getitem__(self.data, key)
     def __setitem__(self, key, value):
         dict.__setitem__(self.data, key, value)
 
-
 class Tvdb:
-    """
-    Create easy-to-use interface to name of season/episode name
+    """Create easy-to-use interface to name of season/episode name
     >>> t = Tvdb()
     >>> t['Scrubs'][1][24]['episodename']
     u'My Last Day'
     """
     from BeautifulSoup import BeautifulStoneSoup
     import random
-    
+
     def __init__(self, interactive=False, debug=False):
         self.shows = ShowContainer() # Holds all Show classes
         self.corrections = {} # Holds show-name to show_id mapping
-        
+
         self.config = {}
-        
+
         self.config['apikey'] = "0629B785CE550C8D" # thetvdb.com API key
-        
+
         self.config['debug_enabled'] = debug # show debugging messages
-        self.config['debug_tofile'] = False
-        self.config['debug_filename'] = "tvdb.log"
-        self.config['debug_path'] = '.'
-        
+
         self.config['interactive'] = interactive # prompt for correct series?
-        
+
         self.cache = Cache(prefix="tvdb_api") # Caches retreived URLs in tmp dir
         self.log = self._initLogger() # Setups the logger (self.log.debug() etc)
-        
+
         # The following url_ configs are based of the
         # http://thetvdb.com/wiki/index.php/Programmers_API
-        self.config['url_mirror'] = "http://www.thetvdb.com/api/%(apikey)s/mirrors.xml" % self.config
-        self.mirrors = self._getMirrors()
-        
-        self.config['random_mirror'] = self.random.choice(self.mirrors)
-        
-        self.config['url_getSeries'] = "%(random_mirror)s/api/GetSeries.php?seriesname=%%s" % self.config
-        self.config['url_epInfo'] = "%(random_mirror)s/api/%(apikey)s/series/%%s/all/" % self.config
-        
-        self.config['url_seriesInfo'] = "%(random_mirror)s/api/%(apikey)s/series/%%s/" % self.config
-        
-        self.config['url_bannerInfo'] = "%(random_mirror)s/api/%(apikey)s/series/%%s/banners.xml" % self.config
-        self.config['url_banners'] = "%(random_mirror)s/banners/%%s" % self.config
+        self.config['base_url'] = "http://www.thetvdb.com"
+
+        self.config['url_getSeries'] = "%(base_url)s/api/GetSeries.php?seriesname=%%s" % self.config
+        self.config['url_epInfo'] = "%(base_url)s/api/%(apikey)s/series/%%s/all/" % self.config
+
+        self.config['url_seriesInfo'] = "%(base_url)s/api/%(apikey)s/series/%%s/" % self.config
+        self.config['url_seriesBanner'] = "%(base_url)s/api/%(apikey)s/series/%%s/banners.xml" % self.config
+        self.config['url_bannerPath'] = "%(base_url)s/banners/%%s" % self.config
+
     #end __init__
-    
+
     def _initLogger(self):
+        """Setups a logger using the logging module, returns a log object
         """
-        Setups a logger using the logging module, returns a log object
-        """
-        import os, logging, sys
-        logdir = os.path.expanduser( self.config['debug_path'] )
-        logpath = os.path.join(logdir, self.config['debug_filename'])
-        
+        import logging, sys
         logger = logging.getLogger("tvdb")
         formatter = logging.Formatter('%(asctime)s) %(levelname)s %(message)s')
-        
-        if self.config['debug_tofile']:
-            hdlr = logging.FileHandler(logpath)
-        else:
-            hdlr = logging.StreamHandler(sys.stdout)
-        #end if debug_tofile
-        
+
+        hdlr = logging.StreamHandler(sys.stdout)
+
         hdlr.setFormatter(formatter)
         logger.addHandler(hdlr)
-        
+
         if self.config['debug_enabled']:
             logger.setLevel(logging.DEBUG)
         else:
-            logger.setLevel(logging.INFO)
+            logger.setLevel(logging.WARNING)
         return logger
     #end initLogger
-    
+
     def _getsoupsrc(self, url):
-        """
-        Helper to get a URL, turn it into
+        """Helper to get a URL, turn it into
         a BeautifulStoneSoup instance (for XML parsing)
         """
         url = url.replace(" ", "+")
@@ -331,12 +344,11 @@ class Tvdb:
         soup = self.BeautifulStoneSoup(src)
         return soup
     #end _getsoupsrc
-    
+
     def _setItem(self, sid, seas, ep, attrib, value):
-        """
-        Creates a new episode, creating Show(), Season() and
-        Episode()s as required. Called by _getEps to populute
-        
+        """Creates a new episode, creating Show(), Season() and
+        Episode()s as required. Called by _getShowData to populute
+
         Since the nice-to-use tvdb[1][24]['name] interface
         makes it impossible to do tvdb[1][24]['name] = "name"
         and still be capable of checking if an episode exists
@@ -356,33 +368,15 @@ class Tvdb:
             self.shows[sid][seas][ep] = Episode()
         self.shows[sid][seas][ep][attrib] = value
     #end _set_item
-    
+
     def _setShowData(self, sid, key, value):
         if not self.shows.has_key(sid):
             self.shows[sid] = Show()
         self.shows[sid].data.__setitem__(key, value)
-    
-    def _getMirrors(self):
-        """
-        Gets a list of mirrors from the API
-        """
-        mirrorSoup = self._getsoupsrc( self.config['url_mirror'] )
-        mirrors = []
-        for mirror in mirrorSoup.findAll('mirror'):
-            self.log.debug('Found mirror %s' % (mirror))
-            
-            mirrors.append(
-                mirror.find('mirrorpath').contents[0]
-            )
-        #end for mirror
-        self.log.debug('Found total of %s mirrors' % (len(mirrors)))
-        return mirrors
-    #end _getMirrors
-    
+
     def _cleanData(self, data):
-        """
-        Cleans up strings returned by TheTVDB.com
-        
+        """Cleans up strings returned by TheTVDB.com
+
         Issues corrected:
         - Returns &amp; instead of &, since &s in filenames
         are bad, replace &amp; with "and"
@@ -391,24 +385,9 @@ class Tvdb:
         data = data.strip()
         return data
     #end _cleanData
-    
-    def _getSeasonSpecificArtwork(self, sid, seasonNumber):
-		seriesBannerSoup = self._getsoupsrc( self.config['url_bannerInfo'] % (sid) )
-		allSeasonSpecificArt = []
-		for banner in seriesBannerSoup.findAll('banner'):
-			bannerType = banner.find('bannertype').contents[0]
-			if bannerType == "season":
-				cur_seasonNumber = int(banner.find('season').contents[0])
-				if cur_seasonNumber == seasonNumber:
-					bannerPath = banner.find('bannerpath').contents[0]
-					allSeasonSpecificArt.append( self.config['url_banners'] % (bannerPath) )
-		#end for banner
-		return allSeasonSpecificArt
-	
-    
+
     def _getSeries(self, series):
-        """
-        This searches TheTVDB.com for the series name,
+        """This searches TheTVDB.com for the series name,
         and either interactivly selects the correct show,
         or returns the first result.
         """
@@ -421,11 +400,11 @@ class Tvdb:
             self.log.debug('Found series %s (id: %s)' % (cur_name, cur_sid))
             allSeries.append( {'sid':cur_sid, 'name':cur_name} )
         #end for series
-        
+
         if len(allSeries) == 0:
             self.log.debug('Series result returned zero')
             raise tvdb_shownotfound("Show-name search returned zero results (cannot find show on TVDB)")
-        
+
         if not self.config['interactive']:
             self.log.debug('Auto-selecting first search result')
             return allSeries[0]
@@ -440,14 +419,14 @@ class Tvdb:
                     allSeries[i]['name'].encode("UTF-8","ignore"),
                     allSeries[i]['sid'].encode("UTF-8","ignore")
                 )
-            
+
             while True: # return breaks this loop
                 try:
                     print "Enter choice (first number, ? for help):"
                     ans = raw_input()
                 except KeyboardInterrupt:
                     raise tvdb_userabort("User aborted (^c keyboard interupt)")
-                
+
                 self.log.debug('Got choice of: %s' % (ans))
                 try:
                     selected_id = int(ans) - 1 # The human entered 1 as first result, not zero
@@ -467,15 +446,15 @@ class Tvdb:
                 #end try
             #end while not valid_input
     #end _getSeries
-    
-    def _getEps(self, sid):
-        """
-        Takes a series ID, gets the epInfo URL and parses the TVDB
+
+    def _getShowData(self, sid):
+        """Takes a series ID, gets the epInfo URL and parses the TVDB
         XML file into the shows dict in layout:
         shows[series_id][season_number][episode_number]
         """
         
         # Parse show information
+        self.log.debug('Getting all series data for %s' % (sid))
         seriesInfoSoup = self._getsoupsrc( self.config['url_seriesInfo'] % (sid) )
         for curInfo in seriesInfoSoup.findAll("series")[0].findChildren():
             if len(curInfo.contents) > 0:
@@ -490,25 +469,61 @@ class Tvdb:
                 )
         #end for series
         
+        # Parse banners
+        self.log.debug('Getting season banners for %s' % (sid))
+        bannersSoup = self._getsoupsrc( self.config['url_seriesBanner'] % (sid) )    
+        banners = {}
+        for cur_banner in bannersSoup.findAll('banner'):
+            # bannerpath: append to <mirrorpath>/banners/ to get actual URL
+            # bannertype: can be series, season, poster or fanart
+            # bannertype: text, graphical or blank
+            # language: Nobody knows
+            # Season: season number this relates to (if appropriate)
+            # vignette path: like banner path, but vignetted
+            # thumbnailpath: like banner path, 300px < 20KB
+            # colors : colours selected by the artist. 1st, light accent, 2nd dark accent, 3rd is netural mid tone
+            bid = cur_banner.id.string
+            btype = cur_banner.bannertype.string
+            btype2 = cur_banner.bannertype2.string
+            if not btype in banners:
+                banners[btype] = {}
+            if not btype2 in banners[btype]:
+                banners[btype][btype2] = {}
+            if not bid in banners[btype][btype2]:
+                banners[btype][btype2][bid] = {}
+            
+            self.log.debug("Banner: %s", bid)
+            for cur_element in cur_banner.findChildren():
+                self.log.debug("Banner info: %s = %s" % (cur_element.name, cur_element.string))
+                banners[btype][btype2][bid][cur_element.name] = cur_element.string
+            
+            for k, v in banners[btype][btype2][bid].items():
+                if k.endswith("path"):
+                    new_key = "_%s" % (k)
+                    new_url = self.config['url_bannerPath'] % (v)
+                    banners[btype][btype2][bid][new_key] = new_url
+
+        self._setShowData(sid, "_banners", banners)
+
+        # Parse episode data
         self.log.debug('Getting all episodes of %s' % (sid))
         epsSoup = self._getsoupsrc( self.config['url_epInfo'] % (sid) )
-        
-        for ep in epsSoup.findAll('episode'):
+
+        for cur_ep in epsSoup.findAll('episode'):
             # We need the season and episode numbers to store the other data
-            ep_no = int( ep.find('episodenumber').contents[0] )
-            seas_no = int( ep.find('seasonnumber').contents[0] )
-            
+            ep_no = int( cur_ep.find('episodenumber').contents[0] )
+            seas_no = int( cur_ep.find('seasonnumber').contents[0] )
+
             # Iterate over the data within each episode
-            for cur_attr in ep.findChildren():
+            for cur_attr in cur_ep.findChildren():
                 if len(cur_attr.contents) > 0:
                     clean_attr = self._cleanData(cur_attr.contents[0])
                     self._setItem(sid, seas_no, ep_no, cur_attr.name, clean_attr)
-        #end for ep
+        #end for cur_ep
     #end _geEps
-    
+
     def _nameToSid(self, name):
-        """
-        Takes show name, returns the correct series ID (if the show has
+        """Takes show name, returns the correct series ID (if the show has
         already been grabbed), or grabs all episodes and returns
         the correct SID.
         """
@@ -520,16 +535,15 @@ class Tvdb:
             selected_series = self._getSeries( name )
             sname, sid = selected_series['name'], selected_series['sid']
             self.log.debug('Got %s, sid %s' % (sname, sid) )
-            
+
             self.corrections[name] = sid
-            self._getEps( sid )
+            self._getShowData( sid )
         #end if self.corrections.has_key
         return sid
     #end _nameToSid
-    
+
     def __getitem__(self, key):
-        """
-        Handles tvdb_instance['seriesname'] calls.
+        """Handles tvdb_instance['seriesname'] calls.
         The dict index should be the show id
         """
         key = key.lower() # make key lower case
@@ -537,12 +551,12 @@ class Tvdb:
         self.log.debug('Got series id %s' % (sid))
         return self.shows[sid]
     #end __getitem__
-    
+
     def __setitem__(self, key, value):
         self.log.debug('Setting %s = %s' % (key, value))
         self.shows[key] = value
     #end __getitem__
-    
+
     def __str__(self):
         return str(self.shows)
     #end __str__
@@ -552,54 +566,65 @@ import unittest
 class test_tvdb(unittest.TestCase):
     def setUp(self):
         self.t = Tvdb()
-    
+
     def test_different_case(self):
-        """
-        Checks the auto-correction of show names is working.
+        """Checks the auto-correction of show names is working.
         It should correct the weirdly capitalised 'sCruBs' to 'Scrubs'
         """
         self.assertEquals(self.t['scrubs'][1][4]['episodename'], 'My Old Lady')
         self.assertEquals(self.t['sCruBs']['seriesname'], 'Scrubs')
-    
+
     def test_spaces(self):
+        """Checks shownames with spaces
+        """
         self.assertEquals(self.t['My Name Is Earl']['seriesname'], 'My Name Is Earl')
         self.assertEquals(self.t['My Name Is Earl'][1][4]['episodename'], 'Faked His Own Death')
-    
+
     def test_numeric(self):
+        """Checks numeric show names
+        """
         self.assertEquals(self.t['24'][2][20]['episodename'], 'Day 2: 3:00 A.M.-4:00 A.M.')
         self.assertEquals(self.t['24']['seriesname'], '24')
-    
+
     def test_seasonnotfound(self):
-        """
-        Using CNNNN, as it is cancelled so it's rather unlikely
-        they'll make another 8 seasons..
+        """Checks exception is thrown when season doesn't exist.
         """
         self.assertRaises(tvdb_seasonnotfound, lambda:self.t['CNNNN'][10][1])
-    
+
     def test_shownotfound(self):
-        """
-        Hopefully no-one creates a show called "the fake show thingy"..
+        """Checks exception is thrown when episode doesn't exist.
         """
         self.assertRaises(tvdb_shownotfound, lambda:self.t['the fake show thingy'])
     
-    def test_attributenamenotfound(self):
+    def test_episodenotfound(self):
+        """Checks exception is raised for non-existant episode
         """
-        Check it raises tvdb_attributenotfound if an episode name is not found.
+        self.assertRaises(tvdb_episodenotfound, lambda:self.t['Scrubs'][1][30])
+
+    def test_attributenamenotfound(self):
+        """Checks exception is thrown for if an attribute isn't found.
         """
         self.assertRaises(tvdb_attributenotfound, lambda:self.t['CNNNN'][1][6]['afakeattributething'])
-    
-    def test_searchepname(self):
-        """
-        Searches for an episode name
+        self.assertRaises(tvdb_attributenotfound, lambda:self.t['CNNNN']['afakeattributething'])
+
+    def test_search_len(self):
+        """There should be only one result matching
         """
         self.assertEquals(len(self.t['My Name Is Earl'].search('Faked His Own Death')), 1)
-        self.assertEquals(self.t['My Name Is Earl'].search('Faked His Own Death')[0]['episodename'], 'Faked His Own Death')
-        self.assertEquals(self.t['Scrubs'].search('my first')[0]['episodename'], 'My First Day')
-    
-    def test_get_episode_overview(self):
+
+    def test_search_checkname(self):
+        """Checks you can get the episode name of a search result
         """
-        Checks episode overview is retrived correctly.
-        Verifies a known episodes overview begins with the correct text.
+        self.assertEquals(self.t['Scrubs'].search('my first')[0]['episodename'], 'My First Day')
+        self.assertEquals(self.t['My Name Is Earl'].search('Faked His Own Death')[0]['episodename'], 'Faked His Own Death')
+    
+    def test_search_multiresults(self):
+        """Checks search can return multiple results
+        """
+        self.assertEquals(len(self.t['Scrubs'].search('my first')) >= 3, True)
+
+    def test_get_episode_overview(self):
+        """Checks episode overview is retrived correctly.
         """
         self.assertEquals(
             self.t['Battlestar Galactica (2003)'][1][6]['overview'].startswith(
@@ -607,19 +632,42 @@ class test_tvdb(unittest.TestCase):
             True
         )
     
+    def test_show_iter(self):
+        """Iterating over a show returns each seasons
+        """
+        self.assertEquals(
+            len(
+                [season for season in self.t['Life on Mars']]
+            ),
+            2
+        )
+    
+    def test_season_iter(self):
+        """Iterating over a show returns episodes
+        """
+        self.assertEquals(
+            len(
+                [episode for episode in self.t['Life on Mars'][1]]
+            ),
+            8
+        )
+    
     def test_episode_data(self):
+        """Checking the firstaired value is retrived"""
         self.assertEquals(
             self.t['lost']['firstaired'],
             '2004-09-22'
         )
-    
+
     def test_doctest(self):
+        """Check docstring examples works"""
         import doctest
         doctest.testmod()
 #end test_tvdb
 
 
 def run_tests():
+    """Runs unittests verbosely"""
     suite = unittest.TestLoader().loadTestsFromTestCase(test_tvdb)
     unittest.TextTestRunner(verbosity=2).run(suite)
 
@@ -628,9 +676,9 @@ def simple_example():
     Simple example of using tvdb_api - it just
     grabs an episode name interactivly.
     """
-    db = Tvdb(interactive=True, debug=True)
-    print db['Lost']['seriesname']
-    print db['Lost'][1][4]['episodename']
+    tvdb_instance = Tvdb(interactive=True, debug=True)
+    print tvdb_instance['Lost']['seriesname']
+    print tvdb_instance['Lost'][1][4]['episodename']
 
 def main():
     """
@@ -638,13 +686,13 @@ def main():
     tests or a simple example using Tvdb()
     """
     from optparse import OptionParser
-    
+
     parser = OptionParser(usage="%prog [options]")
     parser.add_option(  "-t", "--tests", action="store_true", default=False, dest="dotests",
                         help="Run unittests (mostly useful for development)")
-    
+
     opts, args = parser.parse_args()
-    
+
     if opts.dotests:
         run_tests()
     else:
