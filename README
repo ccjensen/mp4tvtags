@@ -1,4 +1,4 @@
-+++++++mp4TvTags+++++++
+++++++++++  mp4tvtags  ++++++++++
 Only tested using Mac OS X Leopard
 
 This requires Python and a modified version of AtomicParsley (to allow it to write to the "long description" tag).
@@ -10,6 +10,24 @@ Usage:
 Browse to the folder that contain the tv episodes. Must be in the structure:
 /Show Name/Season #/S#xE# <anything> .mp4
 example: /The X-Files/Season 1/1x1 Pilot.mp4
+
+Options:
+  -h, --help            show this help message and exit
+  -b, --batch           selects first search result, requires no human
+                        intervention once launched
+  -i, --interactive     interactivly select correct show from search results
+                        [default]
+  -c, --cautious        Writes everything to new files. Nothing is deleted
+                        (will make a mess!)
+  -d, --debug           shows all debugging info
+  -v, --verbose         Will provide some feedback [default]
+  -q, --quiet           For ninja-like processing
+  -f, --force-tagging   Tags all valid files, even previously tagged ones
+  -r, --remove-artwork  removes previously embeded artwork
+  -n, --no-renaming     disables renaming
+  -t, --no-tagging      disables tagging
+
+
 
 
 
