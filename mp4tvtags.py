@@ -112,12 +112,12 @@ def openurl(urls):
 def correctFileName(verbose, program, series, episode):
 	"""docstring for correctFilename"""
 	#Correct file name if incorrect
-	if episode.fileName != "%02dx%02d - %s%s" % (series.seasonNumber, episode.episodeNumber, episode.episodeName, episode.fileExtension):
+	if episode.fileName != "%02dx%02d - %s%s" % (series.seasonNumber, episode.episodeNumber, episode.episodeName.encode("utf-8"), episode.fileExtension):
 		newFileName = "%02dx%02d - %s%s" % (series.seasonNumber, episode.episodeNumber, episode.episodeName, episode.fileExtension)
 		renameCmd = "mv \"%s/%s\" \"%s/%s\"" % (program.dirPath, episode.fileName, program.dirPath, newFileName)
-		os.popen(renameCmd)
+		os.popen(renameCmd.encode("utf-8"))
 		if verbose:
-			print "Filename corrected from \%s\" to \"%s\"" % (episode.fileName, newFileName)
+			print "Filename corrected from \%s\" to \"%s\"" % (episode.fileName, newFileName.encode("utf-8"))
 		#end if verbose
 		episode.fileName = newFileName
 	else:
@@ -197,7 +197,7 @@ def tagFile(debug, verbose, forcetagging, program, series, episode, additionalPa
 		print tagCmd
 	#end if debug
 	
-	os.popen(tagCmd)
+	os.popen(tagCmd.encode("utf-8"))
 	if verbose:
 		print "Tagged: " + episode.fileName
 	#end if verbose
@@ -225,15 +225,15 @@ def artwork(verbose, interactive, program, series):
 			for banner_id, banner_info in tvdb[series.seriesName]['_banners']['season']['season'].items():
 				if banner_info['season'] == str(series.seasonNumber):
 					artworks.append(banner_info['_bannerpath'])
-					
-	artworkCounter = 0
-	print "\nList of available artwork"
-	for artwork in artworks:
-		print "%s. %s" % (artworkCounter, artwork)
-		artworkCounter += 1
-	#end for artwork
 	
-	if interactive:
+	if interactive:			
+		artworkCounter = 0
+		print "\nList of available artwork"
+		for artwork in artworks:
+			print "%s. %s" % (artworkCounter, artwork)
+			artworkCounter += 1
+		#end for artwork
+	
 		#allow user to preview images
 		print "Example of listing: 0 2 4"
 		artworkPreviewRequestNumbers = raw_input("List Images to Preview: ")
@@ -293,15 +293,7 @@ def getShowSpecificInfo(verbose, tvdb, seriesName, attribute):
 def getEpisodeSpecificInfo(verbose, program, series, episodeNumber, attribute):
 	"""docstring for getEpisodeSpecificInfo"""
 	try:
-		value = program.tvdb[series.seriesName][series.seasonNumber][episodeNumber][attribute]
-		#clean up string
-		value =  value.replace('&quot;', "\\\"")
-		
-		#convert any unicode to ascii
-		from unaccented_map import unicode_to_ascii
-		value = unicode_to_ascii(value)
-		
-		return value
+		return program.tvdb[series.seriesName][series.seasonNumber][episodeNumber][attribute]
 	except tvdb_episodenotfound:
 		# The episode was not found wasn't found
 		sys.stderr.write("!!!! Critical Episode Error: Episode name not found for %s - %02dx%02d\n" % (series.seriesName, series.seasonNumber, episodeNumber))
@@ -378,6 +370,7 @@ def main():
 		else:
 			dirPath = args[0]
 		#end if args[0]
+		os.chdir(dirPath)
 		
 		try:
 			# directory structure should be of syntax: /.../.../The X Files/Season 1
@@ -431,9 +424,9 @@ def main():
 		
 		if opts.removeartwork:
 			#remove any pre-existing embeded artwork
-			os.popen("\"" + program.atomicParsley + "\" \"" + program.dirPath + "/" + fileName + "\" --artwork REMOVE_ALL" + additionalParameters)
+			os.popen("\"" + program.atomicParsley + "\" \"" + program.dirPath + "/" + episode.fileName + "\" --artwork REMOVE_ALL" + additionalParameters)
 			if opts.verbose:
-				print "Removed any pre-existing embeded artwork from %s" % fileName
+				print "Removed any pre-existing embeded artwork from %s" % episode.fileName
 			#end if opts.verbose
 		#end if opts.removeartwork
 		
