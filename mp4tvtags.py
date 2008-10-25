@@ -14,11 +14,10 @@ Uses data from www.thetvdb.com via tvdb_api,
 thanks goes to:
 dbr/Ben - http://github.com/dbr - for python help, tvdb_api and tvnamer.py
 Rodney - http://kerstetter.net - for AtomicParsley help
-Coordt - http://www.djangosnippets.org/users/coordt/ - for unicode to ascii
 """
  
 __author__ = "ccjensen/Chris"
-__version__ = "0.2"
+__version__ = "0.3"
  
 import os
 import sys
@@ -270,6 +269,8 @@ def getShowSpecificInfo(verbose, tvdb, seriesName, attribute):
 	"""docstring for getEpisodeSpecificInfo"""
 	try:
 		value = tvdb[seriesName][attribute]		
+		#clean up string
+		value =  value.replace('&quot;', "\\\"")
 		return value
 	except tvdb_error, errormsg:
 		# Error communicating with thetvdb.com
@@ -293,7 +294,10 @@ def getShowSpecificInfo(verbose, tvdb, seriesName, attribute):
 def getEpisodeSpecificInfo(verbose, program, series, episodeNumber, attribute):
 	"""docstring for getEpisodeSpecificInfo"""
 	try:
-		return program.tvdb[series.seriesName][series.seasonNumber][episodeNumber][attribute]
+		value = program.tvdb[series.seriesName][series.seasonNumber][episodeNumber][attribute]
+		#clean up string
+		value =  value.replace('&quot;', "\\\"")
+		return value
 	except tvdb_episodenotfound:
 		# The episode was not found wasn't found
 		sys.stderr.write("!!!! Critical Episode Error: Episode name not found for %s - %02dx%02d\n" % (series.seriesName, series.seasonNumber, episodeNumber))
@@ -379,8 +383,7 @@ def main():
 			(season, seasonNumber) = seasonFull.split(" ",1)
 		except ValueError:
 			sys.stderr.write("!!!! Critical Path Error: Path structure \"%s\" is of incorrect format\nExample of structure: .../The X Files/Season 1\n" % (dirPath))
-			sys.exit(2)
-			
+			sys.exit(2)		
 	else:
 		raise Exception("%s is not a valid directory") % args[0]
 	#end if os.path.isdir
