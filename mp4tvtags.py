@@ -78,7 +78,15 @@ class Episode:
 		pattern = re.compile('[\D]+')
 		#Parse the file name for information: 1x01 - Pilot.mp4
 		(fileBaseName, self.fileExtension) = os.path.splitext(fileName)
-		(seasonNumber2, episodeNumber, tail) = pattern.split(fileBaseName,2)
+		(seasonNumberEpisode, episodeNumber, tail) = pattern.split(fileBaseName,2)
+		
+		#check if filename was of correct format, else set it to an incorrect value
+		if len(seasonNumberEpisode) > 0:
+			self.seasonNumberEpisode = int(seasonNumberEpisode)
+		else:
+			self.seasonNumberEpisode = 9999
+		#end if len(seasonNumberEpisode)
+		
 		self.episodeNumber = int(episodeNumber)
 		
 		#get other episode specific meta data
@@ -111,12 +119,12 @@ def openurl(urls):
 def correctFileName(verbose, program, series, episode):
 	"""docstring for correctFilename"""
 	#Correct file name if incorrect
-	if episode.fileName != "%02dx%02d - %s%s" % (series.seasonNumber, episode.episodeNumber, episode.episodeName.encode("utf-8"), episode.fileExtension):
-		newFileName = "%02dx%02d - %s%s" % (series.seasonNumber, episode.episodeNumber, episode.episodeName, episode.fileExtension)
-		renameCmd = "mv \"%s/%s\" \"%s/%s\"" % (program.dirPath, episode.fileName, program.dirPath, newFileName)
-		os.popen(renameCmd.encode("utf-8"))
+	if episode.fileName != "%02dx%02d - %s%s" % (series.seasonNumber, episode.episodeNumber, episode.episodeName.encode("utf-8").replace('/', "-"), episode.fileExtension):
+		newFileName = "%02dx%02d - %s%s" % (series.seasonNumber, episode.episodeNumber, episode.episodeName.encode("utf-8").replace('/', "-"), episode.fileExtension)
+		renameCmd = "mv -n \"%s/%s\" \"%s/%s\"" % (program.dirPath, episode.fileName, program.dirPath, newFileName)
+		os.popen(renameCmd)
 		if verbose:
-			print "Filename corrected from \%s\" to \"%s\"" % (episode.fileName, newFileName.encode("utf-8"))
+			print "Filename corrected from \"%s\" to \"%s\"" % (episode.fileName, newFileName)
 		#end if verbose
 		episode.fileName = newFileName
 	else:
@@ -402,7 +410,7 @@ def main():
 	artworkFileName = artwork(opts.verbose, opts.interactive, program, series)
 	
 	# loop over all file names in the current directory
-	for fileName in glob.glob("*.mp4"):		
+	for fileName in glob.glob("*.mp4") + glob.glob("*.m4v"):		
 		#check if the image we have needed resizing/dpi changed -> use this new temp file that was created for all the other episodes
 		(imageFile, imageExtension) = os.path.splitext(series.artworkFileName)
 		if series.artworkFileName.count("-resized-") == 0:
@@ -419,6 +427,12 @@ def main():
 		
 		#create an episode which will populate it's fields using data from thetvdb
 		episode = Episode(opts.verbose, program, series, fileName)
+		
+		#check that file was of correct format
+		if episode.seasonNumberEpisode != series.seasonNumber:
+			sys.stderr.write("!!!! Critical File Name Error: File \"%s\" is of incorrect format\nExample of structure: 01x01 - Pilot.mp4\n" % (fileName))
+			continue
+		#end if seasonNumber !=
 		
 		if opts.rename:
 			#fix the filename
