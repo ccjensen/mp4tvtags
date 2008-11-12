@@ -179,6 +179,9 @@ def tagFile(debug, verbose, forcetagging, program, series, episode, additionalPa
 	#concatunate actors and guest stars
 	#actors = series.actors + episode.guestStars #usually makes a ridicously long list
 	#create rDNSatom
+	castDNS = ""
+	directorsDNS = ""
+	screenwritersDNS = ""
 	if len(series.actors) > 0:
 		castDNS = createrdnsatom("cast", series.actors)
 	#end if len	
@@ -205,8 +208,12 @@ def tagFile(debug, verbose, forcetagging, program, series, episode, additionalPa
 	#end if debug
 	
 	os.popen(tagCmd.encode("utf-8"))
+	
+	lockCmd = "chflags uchg \"" + program.dirPath + "/" + episode.fileName + "\""
+	
+	os.popen(lockCmd.encode("utf-8"))
 	if verbose:
-		print "Tagged: " + episode.fileName
+		print "Tagged and locked: " + episode.fileName
 	#end if verbose
 #end tagFile
 	
@@ -233,7 +240,7 @@ def artwork(verbose, interactive, program, series):
 				if banner_info['season'] == str(series.seasonNumber):
 					artworks.append(banner_info['_bannerpath'])
 	
-	if interactive:			
+	if interactive:
 		artworkCounter = 0
 		print "\nList of available artwork"
 		for artwork in artworks:
@@ -265,10 +272,10 @@ def artwork(verbose, interactive, program, series):
 	artworkFileName = series.seriesName + " Season " + str(series.seasonNumber) + artworkUrl_fileNameExtension
 	
 	if verbose:
-		os.popen("curl -o %s %s" % ("\"" + artworkFileName + "\"", artworkUrl))
+		os.popen("curl -o \"%s\" \"%s\"" % (artworkFileName, artworkUrl))
 		print "Downloaded Artwork: " + artworkFileName
 	else:
-		os.popen("curl -s -o %s %s" % ("\"" + artworkFileName + "\"", artworkUrl))
+		os.popen("curl -o \"%s\" \"%s\"" % (artworkFileName, artworkUrl))
 	#end if verbose
 	series.artworkFileName = artworkFileName
 #end artwork
@@ -373,8 +380,9 @@ def main():
 	    parser.error("Provide single directory")
 	#end if len(args)
 	
-	# allFiles = findFiles(args)
-	# validFiles = processNames(allFiles, verbose = opts.debug)
+	if opts.verbose:
+		print "============ mp4tvtags Started ============"
+	#end if verbose
 	
 	if os.path.isdir(args[0]):
 		if args[0] == ".": #current directory
@@ -473,6 +481,10 @@ def main():
 			#end for imageFileName
 		#end if artworkFileName.count
 	#end if opts.overwrite
+	
+	if opts.verbose:
+		print "============ mp4tvtags Completed ============"
+	#end if verbose
 #end main
 
 if __name__ == '__main__':
