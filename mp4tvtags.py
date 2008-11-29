@@ -32,12 +32,12 @@ from tvdb_api import Tvdb
 
 class Program:
 	"""docstring for Program"""
-	def __init__(self, debug, interactive, verbose, dirPath):
-		if verbose:
+	def __init__(self, opts, dirPath):
+		if opts.verbose:
 			print "Connecting to the TVDB... "
 		#end if verbose
 		from tvdb_api import Tvdb
-		self.tvdb = Tvdb(debug = debug, interactive = interactive)
+		self.tvdb = Tvdb(debug = opts.debug, interactive = opts.interactive)
 		self.atomicParsley = os.path.dirname(__file__) + "/AtomicParsley32"
 		self.dirPath = dirPath
 	#end def __init__
@@ -134,7 +134,7 @@ def correctFileName(verbose, program, series, episode):
 	#end if fileName
 #end correctFileName
 
-def tagFile(debug, verbose, forcetagging, program, series, episode, additionalParameters):
+def tagFile(opts, program, series, episode, additionalParameters):
 	"""docstring for tagFile"""
 	if not forcetagging:
 		#check if file has already been tagged
@@ -143,7 +143,7 @@ def tagFile(debug, verbose, forcetagging, program, series, episode, additionalPa
 		existingTags = existingTagsUnsplit.split('\r')
 		for line in existingTags:
 			if line.count("tagged by mp4tvtags"):
-				if verbose:
+				if opts.verbose:
 					print episode.fileName + " already tagged"
 				#end if verbose
 				return
@@ -203,18 +203,24 @@ def tagFile(debug, verbose, forcetagging, program, series, episode, additionalPa
 	+ addContentRating  + addYear + addComment + addrDNSatom + addLongDescription + additionalParameters
 	
 	#run AtomicParsley using the arguments we have created
-	if debug:
+	if opts.debug:
 		print tagCmd
 	#end if debug
 	
 	os.popen(tagCmd.encode("utf-8"))
 	
-	lockCmd = "chflags uchg \"" + program.dirPath + "/" + episode.fileName + "\""
+	if opts.overwrite:
+		lockCmd = "chflags uchg \"" + program.dirPath + "/" + episode.fileName + "\""
 	
-	os.popen(lockCmd.encode("utf-8"))
-	if verbose:
-		print "Tagged and locked: " + episode.fileName
-	#end if verbose
+		os.popen(lockCmd.encode("utf-8"))
+		if opts.verbose:
+			print "Tagged and locked: " + episode.fileName
+		#end if verbose
+	else:
+		if opts.verbose:
+			print "Tagged: " + episode.fileName
+		#end if verbose
+	#end if overwrite
 #end tagFile
 	
 
@@ -404,7 +410,7 @@ def main():
 		raise Exception("%s is not a valid directory") % args[0]
 	#end if os.path.isdir
 	
-	program = Program(opts.debug, opts.interactive, opts.verbose, dirPath)
+	program = Program(opts, dirPath)
 	
 	series = Series(opts.verbose, program, series, seasonNumber)
 	
@@ -457,7 +463,7 @@ def main():
 		
 		#embed information in file using AtomicParsley
 		if opts.tagging:
-			tagFile(opts.debug, opts.verbose, opts.forcetagging, program, series, episode, additionalParameters)
+			tagFile(opts, program, series, episode, additionalParameters)
 		#end if opts.tagging
 	#end for fileName
 	
