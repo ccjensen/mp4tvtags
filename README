@@ -1,4 +1,4 @@
-++++++++++  mp4tvtags  ++++++++++
+++++++++++  mp4tvtags v0.5  ++++++++++
 works on Mac OS X Leopard & Snow Leopard
 
 This requires Python and a modified version of AtomicParsley (to allow it to write to the "long description" tag).

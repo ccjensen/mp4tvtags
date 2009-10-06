@@ -17,7 +17,7 @@ Rodney - http://kerstetter.net - for AtomicParsley help
 """
  
 __author__ = "ccjensen/Chris"
-__version__ = "0.4"
+__version__ = "0.5"
  
 import os
 import sys
@@ -398,8 +398,10 @@ def main():
 	                    help="disables renaming")
 	parser.add_option(  "-t", "--no-tagging", action="store_false", dest="tagging",
 	                    help="disables tagging")
+	parser.add_option(  "-x", "--file-ext", dest="fileExtensions", type="string", nargs=1,
+						help="tells program to only parse inputted extensions.\nExample: \"-x m4v,mp4\" (comma seperated list of extensions)")
 	parser.set_defaults( interactive=True, overwrite=True, debug=False, verbose=True, forcetagging=False,
-	 						removeartwork=False, rename=True, tagging=True )
+	 						removeartwork=False, rename=True, tagging=True, fileExtensions="mp4,m4v" )
 	
 	opts, args = parser.parse_args()
 	
@@ -448,8 +450,19 @@ def main():
 	#request user to select artwork
 	artworkFileName = artwork(opts.verbose, opts.interactive, program, series)
 	
-	# loop over all file names in the current directory
-	for fileName in glob.glob("*.mp4") + glob.glob("*.m4v"):		
+	#find files in the current directory with the specified file extensions
+	for fileExtension in opts.fileExtensions.split(","):
+		fileExtensionPattern = "*." + fileExtension
+		try: files
+		except NameError:
+			files = glob.glob(fileExtensionPattern)
+		else:
+			files += glob.glob(fileExtensionPattern)
+		#end try: files
+	#end for fileExtension
+	
+	# loop over all file names with the correct file extensions in the current directory
+	for fileName in files:		
 		#check if the image we have needed resizing/dpi changed -> use this new temp file that was created for all the other episodes
 		(imageFile, imageExtension) = os.path.splitext(series.artworkFileName)
 		if series.artworkFileName.count("-resized-") == 0:
