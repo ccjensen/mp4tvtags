@@ -1,5 +1,5 @@
 ++++++++++  mp4tvtags  ++++++++++
-Only tested using Mac OS X Leopard
+works on Mac OS X Leopard & Snow Leopard
 
 This requires Python and a modified version of AtomicParsley (to allow it to write to the "long description" tag).
 Below are instructions on how to edit the source version of AtomicParsley (thanks to creator of MetaX Rodney - http://kerstetter.net for the code snippets). Rather then build it yourself, it might be easier to download MetaX and copy the AtomicParsley32 from /../MetaX.app/Contents/Resources

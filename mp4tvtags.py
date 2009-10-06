@@ -17,18 +17,20 @@ Rodney - http://kerstetter.net - for AtomicParsley help
 """
  
 __author__ = "ccjensen/Chris"
-__version__ = "0.3"
+__version__ = "0.4"
  
 import os
 import sys
 import re
 import glob
+import unicodedata
 
 from optparse import OptionParser
  
-from tvdb_api import (tvdb_error, tvdb_shownotfound, tvdb_seasonnotfound,
-    tvdb_episodenotfound, tvdb_episodenotfound, tvdb_attributenotfound, tvdb_userabort)
 from tvdb_api import Tvdb
+#from tvdb_ui import BaseUI, ConsoleUI
+from tvdb_exceptions import (tvdb_error, tvdb_userabort, tvdb_shownotfound,
+    tvdb_seasonnotfound, tvdb_episodenotfound, tvdb_attributenotfound)
 
 class Program:
 	"""docstring for Program"""
@@ -36,8 +38,7 @@ class Program:
 		if opts.verbose:
 			print "Connecting to the TVDB... "
 		#end if verbose
-		from tvdb_api import Tvdb
-		self.tvdb = Tvdb(debug = opts.debug, interactive = opts.interactive)
+		self.tvdb = Tvdb(debug = opts.debug, interactive = opts.interactive, banners = True)
 		self.atomicParsley = os.path.dirname(__file__) + "/AtomicParsley32"
 		self.dirPath = dirPath
 	#end def __init__
@@ -94,7 +95,10 @@ class Episode:
 		self.firstAired = getEpisodeSpecificInfo(verbose, program, series, self.episodeNumber, 'firstaired') + "T09:00:00Z"
 		
 		self.guestStarsUnsplit = getEpisodeSpecificInfo(verbose, program, series, self.episodeNumber, 'gueststars')
-		self.guestStars = self.guestStarsUnsplit.split('|')
+		# if self.guestStarsUnsplit:
+		# 	self.guestStars = self.guestStarsUnsplit.split('|')
+		# else:
+		# 	self.guestStars = ""
 		
 		self.directorsUnsplit = getEpisodeSpecificInfo(verbose, program, series, self.episodeNumber, 'director')
 		self.directors = self.directorsUnsplit.split('|')
@@ -136,7 +140,7 @@ def correctFileName(verbose, program, series, episode):
 
 def tagFile(opts, program, series, episode, additionalParameters):
 	"""docstring for tagFile"""
-	if not forcetagging:
+	if not opts.forcetagging:
 		#check if file has already been tagged
 		cmd = "\"" + program.atomicParsley + "\" \"" + program.dirPath + "/" + episode.fileName + "\"" + " -t"
 		existingTagsUnsplit = os.popen(cmd).read()
@@ -151,7 +155,11 @@ def tagFile(opts, program, series, episode, additionalParameters):
 		#end for line
 	#end if opts.forcetagging
 	#setup tags for the AtomicParsley function
-	addArtwork = " --artwork \"%s\"" % series.artworkFileName #the file we downloaded earlier
+	if series.artworkFileName != "":
+		addArtwork = " --artwork \"%s\"" % series.artworkFileName #the file we downloaded earlier
+	else:
+		addArtwork = ""
+	#end if series.artworkFileName != ""
 	addStik = " --stik value=\"10\"" #set type to TV Show
 	addArtist = " --artist \"%s\"" % series.seriesName
 	addTitle =  " --title \"%s\"" % episode.episodeName
@@ -225,71 +233,85 @@ def tagFile(opts, program, series, episode, additionalParameters):
 	
 
 def artwork(verbose, interactive, program, series):
-	potentialArtworkFileName = series.seriesName + " Season " + str(series.seasonNumber)
-	for fileName in glob.glob("*.jpg"):
-		(fileBaseName, fileExtension) = os.path.splitext(fileName)
-		if fileBaseName == potentialArtworkFileName:
-			if verbose:
-				print "Using Previously Downloaded Artwork: " + fileName
-			#end if verbose
-			series.artworkFileName = fileName
-			return
-		#end if fileBaseName
-	#end for fileName
+	try:
+		potentialArtworkFileName = series.seriesName + " Season " + str(series.seasonNumber)
+		for fileName in glob.glob("*.jpg"):
+			(fileBaseName, fileExtension) = os.path.splitext(fileName)
+			if fileBaseName == potentialArtworkFileName:
+				if verbose:
+					print "Using Previously Downloaded Artwork: " + fileName
+				#end if verbose
+				series.artworkFileName = fileName
+				return
+			#end if fileBaseName
+		#end for fileName
 	
-	tvdb = program.tvdb
+		tvdb = program.tvdb
 	
-	if 'season' in tvdb[series.seriesName]['_banners']:
-		if 'season' in tvdb[series.seriesName]['_banners']['season']:
-			artworks = []
-			for banner_id, banner_info in tvdb[series.seriesName]['_banners']['season']['season'].items():
-				if banner_info['season'] == str(series.seasonNumber):
-					artworks.append(banner_info['_bannerpath'])
+		if 'season' in tvdb[series.seriesName]['_banners']:
+			if 'season' in tvdb[series.seriesName]['_banners']['season']:
+				artworks = []
+				for banner_id, banner_info in tvdb[series.seriesName]['_banners']['season']['season'].items():
+					if banner_info['season'] == str(series.seasonNumber):
+						artworks.append(banner_info['_bannerpath'])
 	
-	if interactive:
-		artworkCounter = 0
-		print "\nList of available artwork"
-		for artwork in artworks:
-			print "%s. %s" % (artworkCounter, artwork)
-			artworkCounter += 1
-		#end for artwork
+		#check if we didn't find any artwork, if so do not continue
+		if len(artworks) == 0:
+			raise tvdb_attributenotfound
+		#end if len(artworks) == 0
 	
-		#allow user to preview images
-		print "Example of listing: 0 2 4"
-		artworkPreviewRequestNumbers = raw_input("List Images to Preview: ")
-		artworkPreviewRequests = artworkPreviewRequestNumbers.split()
+		if interactive:
+			artworkCounter = 0
+			print "\nList of available artwork"
+			for artwork in artworks:
+				print "%s. %s" % (artworkCounter, artwork)
+				artworkCounter += 1
+			#end for artwork
 	
-		artworkPreviewUrls = []
-		for artworkPreviewRequest in artworkPreviewRequests:
-			artworkPreviewUrls.append(artworks[int(artworkPreviewRequest)])
-		#end for artworkPreviewRequest
-		openurl(artworkPreviewUrls)
+			#allow user to preview images
+			print "Example of listing: 0 2 4"
+			artworkPreviewRequestNumbers = raw_input("List Images to Preview: ")
+			artworkPreviewRequests = artworkPreviewRequestNumbers.split()
 	
-		#ask user what artwork he wants to use
-		artworkChoice = int(raw_input("Artwork to use: "))
-	else:
-		artworkChoice = 0
-	#end if interactive
-	artworkUrl = artworks[artworkChoice]
+			artworkPreviewUrls = []
+			for artworkPreviewRequest in artworkPreviewRequests:
+				artworkPreviewUrls.append(artworks[int(artworkPreviewRequest)])
+			#end for artworkPreviewRequest
+			openurl(artworkPreviewUrls)
 	
-	(artworkUrl_base, artworkUrl_fileName) = os.path.split(artworkUrl)
-	(artworkUrl_baseFileName, artworkUrl_fileNameExtension)=os.path.splitext(artworkUrl_fileName)
+			#ask user what artwork he wants to use
+			artworkChoice = int(raw_input("Artwork to use: "))
+		else:
+			artworkChoice = 0
+		#end if interactive
 	
-	artworkFileName = series.seriesName + " Season " + str(series.seasonNumber) + artworkUrl_fileNameExtension
+		artworkUrl = artworks[artworkChoice]
 	
-	if verbose:
-		os.popen("curl -o \"%s\" \"%s\"" % (artworkFileName, artworkUrl))
-		print "Downloaded Artwork: " + artworkFileName
-	else:
-		os.popen("curl -o \"%s\" \"%s\"" % (artworkFileName, artworkUrl))
-	#end if verbose
-	series.artworkFileName = artworkFileName
+		(artworkUrl_base, artworkUrl_fileName) = os.path.split(artworkUrl)
+		(artworkUrl_baseFileName, artworkUrl_fileNameExtension)=os.path.splitext(artworkUrl_fileName)
+	
+		artworkFileName = series.seriesName + " Season " + str(series.seasonNumber) + artworkUrl_fileNameExtension
+	
+		if verbose:
+			os.popen("curl -o \"%s\" \"%s\"" % (artworkFileName, artworkUrl))
+			print "Downloaded Artwork: " + artworkFileName
+		else:
+			os.popen("curl -o \"%s\" \"%s\"" % (artworkFileName, artworkUrl))
+		#end if verbose
+		series.artworkFileName = artworkFileName
+	except tvdb_attributenotfound:
+		# The attribute wasn't found, not critical
+		if verbose:
+			sys.stderr.write("!! Non-Critical Show Error: %s not found for %s\n" % ("artwork", series.seriesName))
+		#end if verbose
 #end artwork
 
 def getShowSpecificInfo(verbose, tvdb, seriesName, attribute):
 	"""docstring for getEpisodeSpecificInfo"""
 	try:
 		value = tvdb[seriesName][attribute]		
+		if not value:
+			return ""
 		#clean up string
 		value =  value.replace('&quot;', "\\\"")
 		return value
@@ -316,8 +338,11 @@ def getEpisodeSpecificInfo(verbose, program, series, episodeNumber, attribute):
 	"""docstring for getEpisodeSpecificInfo"""
 	try:
 		value = program.tvdb[series.seriesName][series.seasonNumber][episodeNumber][attribute]
+		if not value:
+			return ""
 		#clean up string
-		value =  value.replace('&quot;', "\\\"")
+		value = value.replace('&quot;', "\\\"")
+		value = value.replace('`', "'")
 		return value
 	except tvdb_episodenotfound:
 		# The episode was not found wasn't found
@@ -407,7 +432,7 @@ def main():
 			sys.stderr.write("!!!! Critical Path Error: Path structure \"%s\" is of incorrect format\nExample of structure: .../The X Files/Season 1\n" % (dirPath))
 			sys.exit(2)		
 	else:
-		raise Exception("%s is not a valid directory") % args[0]
+		raise Exception("%s is not a valid directory" % args[0])
 	#end if os.path.isdir
 	
 	program = Program(opts, dirPath)
