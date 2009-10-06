@@ -26,6 +26,10 @@ Options:
   -r, --remove-artwork  removes previously embeded artwork
   -n, --no-renaming     disables renaming
   -t, --no-tagging      disables tagging
+  -x FILEEXTENSIONS, --file-ext=FILEEXTENSIONS
+                        tells program to only parse inputted extensions.
+                        Example: "-x m4v,mp4" (comma seperated list of
+                        extensions)
 
 
 
