@@ -8,8 +8,8 @@ No matter which method you choose, the modified version of AtomicParsley must be
 
 Usage:
 Browse to the folder that contain the tv episodes. Must be in the structure:
-/Show Name/Season [S#]/[S#]x[E#] <anything> .mp4
-example: /The X-Files/Season 1/01x01 Pilot.mp4
+Show Name - S[S#]E[E#] <anything> .mp4
+example: The X-Files - S01E01 - Pilot.mp4
 
 Options:
   -h, --help            show this help message and exit
