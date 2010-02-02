@@ -1,5 +1,5 @@
-++++++++++  mp4tvtags  ++++++++++
-Only tested using Mac OS X Leopard
+++++++++++  mp4tvtags v0.5  ++++++++++
+works on Mac OS X Leopard & Snow Leopard
 
 This requires Python and a modified version of AtomicParsley (to allow it to write to the "long description" tag).
 Below are instructions on how to edit the source version of AtomicParsley (thanks to creator of MetaX Rodney - http://kerstetter.net for the code snippets). Rather then build it yourself, it might be easier to download MetaX and copy the AtomicParsley32 from /../MetaX.app/Contents/Resources
@@ -26,6 +26,10 @@ Options:
   -r, --remove-artwork  removes previously embeded artwork
   -n, --no-renaming     disables renaming
   -t, --no-tagging      disables tagging
+  -x FILEEXTENSIONS, --file-ext=FILEEXTENSIONS
+                        tells program to only parse inputted extensions.
+                        Example: "-x m4v,mp4" (comma seperated list of
+                        extensions)
 
 
 
