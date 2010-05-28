@@ -4,7 +4,7 @@ works on Mac OS X Leopard & Snow Leopard
 thanks goes to:
 the MP4v2 team (http://code.google.com/p/mp4v2/) for their excellent mp4 container editing library
 the Subler team (http://code.google.com/p/subler/), their project was used as a template for MP4Tagger (source code soon to be released)
-dbr - http://github.com/dbr/themoviedb - for the API wrapper to TMDb
+dbr - http://github.com/dbr/ - for the API wrapper to thetvdb
 
 To actually embed the information in the files, a commandline tagger called MP4Tagger is used. This is a tool based upon Subler, which uses the mp4v2 library. It's written in a mix of C, C++ and Objective-C. Source code will be released.
 
